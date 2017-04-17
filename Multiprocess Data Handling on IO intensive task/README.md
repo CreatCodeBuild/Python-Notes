@@ -1,4 +1,4 @@
-This note demonstrates how to use multiple processes on data parallelism tasks.
+This note demonstrates how to use __multiple processes on data parallelism tasks__.
 
 The experiment is only suitable for GB level data. In my case, I used 12 GB of data.
 
