@@ -114,3 +114,13 @@ A 3% gain. Yeah!
 
 ### Conclusion
 Through 2 steps of optimization, with less than 10 lines of code, we obtain an overall 293% performance gain. Remember, Python is slow, but, it's not hard to make it less slow.
+
+You might want to ask, why bother? If my Python code is slow, I can always write the slow part with C++.
+
+I have 2 arguments to justify it:
+1. We, Python programmers say that we will rewrite slow code with C/C++. Nobody does it. It is not that easy to write a native extension for Python. Sometimes it's just not worth it to write a native code for some one-time use code. If you are writing a more general utility that will be used by many developers, then it's worth it. Numpy etc. We are not doing extreme optimization here.
+2. No matter how fast your single thread code is, you still need to write milti-process parallel code someitmes. This experiment use Python as an example, but the principle applies to all languages. If you have data parallelism, consider multi-process.
+
+Ok, hope this is helpful to you.
+
+Best
