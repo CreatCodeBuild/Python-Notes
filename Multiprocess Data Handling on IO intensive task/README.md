@@ -105,3 +105,12 @@ As you can see, we divide the data into 8 pieces by
 _list = [pickle.dumps((data_paths[i:i+n], to_dirs[i:i+n])) for i in range(0, len(data_paths), n)] 
 ```
 Notice that we use `pickle` to serialize our data, since Python uses the unix tradition that processes communicate through streams/files. Therefore, we can only pass `bytes`, `string` or `int` to another process. (I am not sure if you can pass float). Here we serialize a Python object to Python `bytes`.
+
+The result is:
+```
+Better multi-processed version: 36.4 seconds
+```
+A 3% gain. Yeah!
+
+### Conclusion
+Through 2 steps of optimization, with less than 10 lines of code, we obtain an overall 293% performance gain. Remember, Python is slow, but, it's not hard to make it less slow.
