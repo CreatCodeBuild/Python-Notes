@@ -7,6 +7,11 @@ from io import BufferedReader
 import time
 import pickle
 
+
+"""
+First, let's define helper functions.
+We use the faster version of read_velodyne_data here.
+"""
 def read_velodyne_data(file_path):
 	"""
 	Read velodyne binary data and return a numpy array
@@ -64,6 +69,18 @@ def bird_view_map(velodyne_data):
 	bird_view[:,:,2] = np.interp(bird_view[:,:,2], xp=(np.min(bird_view[:,:,2]), np.max(bird_view[:,:,2])), fp=(0, 255))
 	return bird_view
 
+
+
+"""
+Now, let's define the multi-process code.
+We use the multiprocessing.Pool class. This class has a map function which allows you to do data parallelism like it's nothing.
+
+With map function, you don't need to worry about spawning, passing data, listening and joining processes at all.
+You just write your code as if it's single processed.
+
+This function is useful when your data are indenpendent from one anathor. 
+In our case, each file can be handled individually, so that each process only has to be responsible for itself.
+"""
 def f(path):
 	view = bird_view_map(read_velodyne_data(path[0]))
 	cv2.imwrite(''.join([path[1], '/', os.path.basename(path[0])[:-4], '.png']), view)
@@ -80,6 +97,17 @@ def generate_birdviews(data_paths, to_dir, workers):
 		p.map(f, list(zip(data_paths, to_dirs)))
 
 
+if __name__ == '__main__':
+	t = time.time()
+	generate_birdviews(glob('data/raw/*.bin')[:100], to_dir='data/processed', workers=8)
+	used = time.time() - t
+	print('Simple multi-processed version:', used, 'seconds')
+
+
+
+"""
+Can we optimize further?
+"""
 def f2(paths):
 	paths =  pickle.loads(paths)
 	_from, to = paths
@@ -103,11 +131,6 @@ def generate_birdviews_2(data_paths, to_dir, workers):
         
 if __name__ == '__main__':
 	t = time.time()
-	generate_birdviews(glob('data/raw/*.bin'), to_dir='data/processed', workers=8)
-	used = time.time() - t
-	print(used)
-
-	t = time.time()
-	generate_birdviews_2(glob('data/raw/*.bin'), to_dir='data/processed', workers=8)
+	generate_birdviews_2(glob('data/raw/*.bin')[:100], to_dir='data/processed', workers=8)
 	used2 = time.time() - t
 	print(used2)
