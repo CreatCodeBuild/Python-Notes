@@ -16,7 +16,7 @@ Now, we are pretty confident that our single version is fast enough. Let's summo
 
 We use the `multiprocessing.Pool` class. This class has a `map` function which allows you to do data parallelism like it's nothing.
 
-With `map` function, you don't need to worry about spawning, passing data, listening and joining processes at all. You just write your code as if it's single processed.
+`map` function blocks until all results are computed. You don't need to worry about spawning, passing data, listening and joining processes at all. You just write your code as if it's single processed.
 
 This function is useful when your data are indenpendent from one anathor. In our case, each file can be handled individually, so that each process only has to be responsible for itself.
 
@@ -48,4 +48,60 @@ if __name__ == '__main__':
 	used = time.time() - t
 	print('Simple multi-processed version:', used, 'seconds')
 ```
+Notice 2 things:
+1. In `Pool.map(func, iterable)`, `func` must be defined at the module level. In other words, it has to be a global function.
+2. You have to call `.map` under `__main__` namespace. Or you will have a major problem. You can do some research to know why.
 
+The result on my i7 (4 cores, 8 hyperthreads)
+```
+Simple multi-processed version: 37.5 seconds
+```
+
+As you can see, we push down the time to less than 1/3. 
+
+Why isn't it 1/8 ? First, it's hyper threadings, it's not real 8 cores. Second, inter process communication has overhead.
+
+But still, with mere 10 lines of code, we boost the performance 250%. This is incredible gain.
+
+However, we can still optimize further. Remember, interprocess communication is heavy. Even spawning a new process introduce a lot of overhead.
+
+Do you know how many processes our code spawns? 100 processes!
+
+Wait, isn't it 8? Yes, only 8 processes are alive at a time. But, since the list has 100 elements, there are 100 process ever alive in total. That's a huge waste since each process only process 1 file!
+
+It would be wise if we divide our data into 8 pieces instead of 100 pieces and let only 8 processes to deal with them.
+
+Let's modifly the code:
+```Python
+def f2(paths):
+	paths =  pickle.loads(paths)
+	_from, to = paths
+	for i in range(len(to)):
+		view = bird_view_map(read_velodyne_data(_from[i]))
+		cv2.imwrite(''.join([to[i], '/', os.path.basename(_from[i])[:-4], '.png']), view)
+
+
+def generate_birdviews_2(data_paths, to_dir, workers):
+	"""
+	This function process velodyne data to birdview in parallel
+	:param data_paths: a list of paths to velodyne xxx.bin files
+	:param     to_dir: write birdview maps to this directory
+	:param    workers: number of processes
+	"""
+	with Pool(workers) as p:
+		to_dirs = [to_dir] * len(data_paths)
+		n = np.int(np.ceil(len(data_paths)/workers))
+		_list = [pickle.dumps((data_paths[i:i+n], to_dirs[i:i+n])) for i in range(0, len(data_paths), n)] 
+		p.map(f2, _list)
+        
+if __name__ == '__main__':
+	t = time.time()
+	generate_birdviews_2(glob('data/raw/*.bin')[:100], to_dir='data/processed', workers=8)
+	used2 = time.time() - t
+	print('Better multi-processed version:', used2, 'seconds')
+```
+As you can see, we divide the data into 8 pieces by
+```
+_list = [pickle.dumps((data_paths[i:i+n], to_dirs[i:i+n])) for i in range(0, len(data_paths), n)] 
+```
+Notice that we use `pickle` to serialize our data, since Python uses the unix tradition that processes communicate through streams/files. Therefore, we can only pass `bytes`, `string` or `int` to another process. (I am not sure if you can pass float). Here we serialize a Python object to Python `bytes`.
