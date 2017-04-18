@@ -133,4 +133,4 @@ if __name__ == '__main__':
 	t = time.time()
 	generate_birdviews_2(glob('data/raw/*.bin')[:100], to_dir='data/processed', workers=8)
 	used2 = time.time() - t
-	print(used2)
+	print('Better multi-processed version:', used2, 'seconds')
