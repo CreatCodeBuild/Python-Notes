@@ -108,29 +108,29 @@ if __name__ == '__main__':
 """
 Can we optimize further?
 """
-def f2(paths):
-	paths =  pickle.loads(paths)
-	_from, to = paths
-	for i in range(len(to)):
-		view = bird_view_map(read_velodyne_data(_from[i]))
-		cv2.imwrite(''.join([to[i], '/', os.path.basename(_from[i])[:-4], '.png']), view)
+# def f2(paths):
+# 	paths =  pickle.loads(paths)
+# 	_from, to = paths
+# 	for i in range(len(to)):
+# 		view = bird_view_map(read_velodyne_data(_from[i]))
+# 		cv2.imwrite(''.join([to[i], '/', os.path.basename(_from[i])[:-4], '.png']), view)
 
 
-def generate_birdviews_2(data_paths, to_dir, workers):
-	"""
-	This function process velodyne data to birdview in parallel
-	:param data_paths: a list of paths to velodyne xxx.bin files
-	:param     to_dir: write birdview maps to this directory
-	:param    workers: number of processes
-	"""
-	with Pool(workers) as p:
-		to_dirs = [to_dir] * len(data_paths)
-		n = np.int(np.ceil(len(data_paths)/workers))
-		_list = [pickle.dumps((data_paths[i:i+n], to_dirs[i:i+n])) for i in range(0, len(data_paths), n)] 
-		p.map(f2, _list)
+# def generate_birdviews_2(data_paths, to_dir, workers):
+# 	"""
+# 	This function process velodyne data to birdview in parallel
+# 	:param data_paths: a list of paths to velodyne xxx.bin files
+# 	:param     to_dir: write birdview maps to this directory
+# 	:param    workers: number of processes
+# 	"""
+# 	with Pool(workers) as p:
+# 		to_dirs = [to_dir] * len(data_paths)
+# 		n = np.int(np.ceil(len(data_paths)/workers))
+# 		_list = [pickle.dumps((data_paths[i:i+n], to_dirs[i:i+n])) for i in range(0, len(data_paths), n)] 
+# 		p.map(f2, _list)
         
-if __name__ == '__main__':
-	t = time.time()
-	generate_birdviews_2(glob('data/raw/*.bin')[:100], to_dir='data/processed', workers=8)
-	used2 = time.time() - t
-	print('Better multi-processed version:', used2, 'seconds')
+# if __name__ == '__main__':
+# 	t = time.time()
+# 	generate_birdviews_2(glob('data/raw/*.bin')[:100], to_dir='data/processed', workers=8)
+# 	used2 = time.time() - t
+# 	print('Better multi-processed version:', used2, 'seconds')
