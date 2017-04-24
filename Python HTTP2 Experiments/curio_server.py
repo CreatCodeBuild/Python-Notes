@@ -1,7 +1,7 @@
 #!/usr/bin/env python3.5
 # -*- coding: utf-8 -*-
 """
-curio-server.py
+curio_server.py
 ~~~~~~~~~~~~~~~
 
 A fully-functional HTTP/2 server written for curio.
@@ -108,7 +108,7 @@ class H2Server:
         assert headers[':method'] == 'GET'
 
         path = headers[':path'].lstrip('/')
-        full_path = os.path.join(self.root, 'public', path)
+        full_path = os.path.join(self.root, path)
 
         if not os.path.exists(full_path):
             response_headers = (

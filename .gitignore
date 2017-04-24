@@ -1,5 +1,6 @@
 # common
 .idea/
+*.pyc
 
 # A Beginner's Approach to Multi-processing Optimization 
 data/
