@@ -22,41 +22,36 @@ import h2.events
 # The maximum amount of a file we'll send in a single DATA frame.
 READ_CHUNK_SIZE = 8192
 
+
 class EndPointHandler:
-    def __init__(self, socket, connection: h2.connection.H2Connection, header, stream_id):
-        self.socket = socket
+    def __init__(self, sock, connection: h2.connection.H2Connection, header, stream_id):
+        self.socket = sock
         self.connection = connection
         self.header = header
         self.stream_id = stream_id
 
     async def send_and_end(self, data):
-        print(0)
+
+        # Header
         content_type, content_encoding = mimetypes.guess_type(data)
-        print(11)
-        print(data)
         data = bytes(data, encoding='utf8')
-        print(111)
         response_headers = [
             (':status', '200'),
             ('content-length', str(len(data))),
             ('server', 'curio-h2'),
         ]
-        print(1111)
         if content_type:
             response_headers.append(('content-type', content_type))
         if content_encoding:
             response_headers.append(('content-encoding', content_encoding))
 
-        print(1)
         self.connection.send_headers(self.stream_id, response_headers)
-        print(2)
         await self.socket.sendall(self.connection.data_to_send())
 
-        print('send_and_end')
+        # Body
         self.connection.send_data(self.stream_id, bytes(data), end_stream=True)
-        print('mid send_and_end')
         await self.socket.sendall(self.connection.data_to_send())
-        print('after send_and_end')
+
 
 def create_listening_ssl_socket(address, certfile, keyfile):
     """
@@ -152,7 +147,6 @@ class H2Server:
             route = headers[':path'].lstrip('/')
 
             if route in self.app.routes['GET']:
-                print('!!!!!!!!!')
                 await self.app.routes['GET'][route](EndPointHandler(self.sock, self.conn, headers, stream_id))
 
             # if route is not registered, assume it is requesting files

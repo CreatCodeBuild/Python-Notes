@@ -1,12 +1,15 @@
+import os
+
 from curio import Kernel
 
-from curio_server import h2_server, H2Server
+from h2web.curio_server import h2_server
 
 
 class App:
 	def __init__(self, port=5000, root='./public'):
 		self.port = port
-		self.root = root
+		self.root = os.path.abspath(root)
+		print(self.root)
 		self.server = None
 		self.routes = {'GET': {}, 'POST': {}}
 
