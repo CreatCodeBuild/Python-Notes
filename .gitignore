@@ -1,2 +1,11 @@
+# common
+.idea/
+
+# A Beginner's Approach to Multi-processing Optimization 
 data/
 .ipynb_checkpoints/
+
+# Python HTTP2 Experiments
+hyper-h2-master/
+public/
+
