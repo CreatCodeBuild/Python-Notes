@@ -22,6 +22,41 @@ import h2.events
 # The maximum amount of a file we'll send in a single DATA frame.
 READ_CHUNK_SIZE = 8192
 
+class EndPointHandler:
+    def __init__(self, socket, connection: h2.connection.H2Connection, header, stream_id):
+        self.socket = socket
+        self.connection = connection
+        self.header = header
+        self.stream_id = stream_id
+
+    async def send_and_end(self, data):
+        print(0)
+        content_type, content_encoding = mimetypes.guess_type(data)
+        print(11)
+        print(data)
+        data = bytes(data, encoding='utf8')
+        print(111)
+        response_headers = [
+            (':status', '200'),
+            ('content-length', str(len(data))),
+            ('server', 'curio-h2'),
+        ]
+        print(1111)
+        if content_type:
+            response_headers.append(('content-type', content_type))
+        if content_encoding:
+            response_headers.append(('content-encoding', content_encoding))
+
+        print(1)
+        self.connection.send_headers(self.stream_id, response_headers)
+        print(2)
+        await self.socket.sendall(self.connection.data_to_send())
+
+        print('send_and_end')
+        self.connection.send_data(self.stream_id, bytes(data), end_stream=True)
+        print('mid send_and_end')
+        await self.socket.sendall(self.connection.data_to_send())
+        print('after send_and_end')
 
 def create_listening_ssl_socket(address, certfile, keyfile):
     """
@@ -44,7 +79,7 @@ def create_listening_ssl_socket(address, certfile, keyfile):
     return sock
 
 
-async def h2_server(address, root, certfile, keyfile):
+async def h2_server(address, root, certfile, keyfile, app):
     """
     Create an HTTP/2 server at the given address.
     """
@@ -54,7 +89,8 @@ async def h2_server(address, root, certfile, keyfile):
     async with sock:
         while True:
             client, _ = await sock.accept()
-            server = H2Server(client, root)
+            server = H2Server(client, root, app)
+            app.server = server
             await spawn(server.run())
 
 
@@ -64,14 +100,16 @@ class H2Server:
     SimpleHTTPServer from the standard library, but uses HTTP/2 instead of
     HTTP/1.1.
     """
-    def __init__(self, sock, root):
-        config = h2.config.H2Configuration(
-            client_side=False, header_encoding='utf-8'
-        )
+    def __init__(self, sock, root, app):
+        config = h2.config.H2Configuration(client_side=False, header_encoding='utf-8')
         self.sock = sock
         self.conn = h2.connection.H2Connection(config=config)
         self.root = root
         self.flow_control_events = {}
+
+        # the Application that needs this server
+        # this server runs this app
+        self.app = app
 
     async def run(self):
         """
@@ -89,12 +127,13 @@ class H2Server:
 
             events = self.conn.receive_data(data)
             for event in events:
+
                 if isinstance(event, h2.events.RequestReceived):
-                    await spawn(
-                        self.request_received(event.headers, event.stream_id)
-                    )
+                    await spawn(self.request_received(event.headers, event.stream_id))
+
                 elif isinstance(event, h2.events.DataReceived):
                     self.conn.reset_stream(event.stream_id)
+
                 elif isinstance(event, h2.events.WindowUpdated):
                     await self.window_updated(event)
 
@@ -105,23 +144,36 @@ class H2Server:
         Handle a request by attempting to serve a suitable file.
         """
         headers = dict(headers)
+        for k, v in headers.items():
+            print(k, v)
         assert headers[':method'] == 'GET'
 
-        path = headers[':path'].lstrip('/')
-        full_path = os.path.join(self.root, path)
+        if headers[':method'] == 'GET':
+            route = headers[':path'].lstrip('/')
 
-        if not os.path.exists(full_path):
-            response_headers = (
-                (':status', '404'),
-                ('content-length', '0'),
-                ('server', 'curio-h2'),
-            )
-            self.conn.send_headers(
-                stream_id, response_headers, end_stream=True
-            )
-            await self.sock.sendall(self.conn.data_to_send())
+            if route in self.app.routes['GET']:
+                print('!!!!!!!!!')
+                await self.app.routes['GET'][route](EndPointHandler(self.sock, self.conn, headers, stream_id))
+
+            # if route is not registered, assume it is requesting files
+            else:
+                full_path = os.path.join(self.root, route)
+                if not os.path.exists(full_path):
+                    response_headers = (
+                        (':status', '404'),
+                        ('content-length', '0'),
+                        ('server', 'curio-h2'),
+                    )
+                    self.conn.send_headers(
+                        stream_id, response_headers, end_stream=True
+                    )
+                    await self.sock.sendall(self.conn.data_to_send())
+                else:
+                    await self.send_file(full_path, stream_id)
+
         else:
-            await self.send_file(full_path, stream_id)
+            raise NotImplementedError('Only GET is implemented')
+
 
     async def send_file(self, file_path, stream_id):
         """
